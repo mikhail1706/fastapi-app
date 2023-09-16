@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+    container_name: fastapi_app
+    env_file:
+      - .env
+    ports:
+      - "80:8000"
+    depends_on:
+      - redis
+      - postgres
+    command: [ "/fastapi_app/docker/app.sh" ]
+
+  postgres:
+    image: postgres:14.7-alpine
+    container_name: postgres
+    env_file: .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mypassword
+  redis:
+    image: bitnami/redis:latest
+    container_name: redis
+    env_file: .env
+    ports:
+      - "6379:6379"
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+
+  celery:
+    build:
+      context: .
+    env_file:
+      - .env
+    container_name: celery_app
+    command: [ "/fastapi_app/docker/celery.sh", "celery" ]
+    depends_on:
+      - redis
+
+  flower:
+    build:
+      context: .
+    env_file:
+      - .env
+    container_name: flower_app
+    command: [ "/fastapi_app/docker/celery.sh", "flower" ]
+    depends_on:
+      - redis
+      - celery
+    ports:
+      - "5555:5555"
+
+
+
+volumes:
+  postgres_data:
+  cache:
